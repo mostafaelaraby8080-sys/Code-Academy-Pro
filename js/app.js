@@ -18,9 +18,9 @@ const challenges = [
   { title: "ابنِ آلة حاسبة", category: "مشروع", difficulty: "متقدم", points: 500, unlocked: false },
 ];
 const resources = [
-  { title: "دليل HTML الكامل", kind: "مرجع", color: "red", label: "HTML", desc: "كل ما تحتاجه لبناء صفحات منظمة." },
-  { title: "CSS Layout Cheatsheet", kind: "ورقة غش", color: "blue", label: "CSS", desc: "مرجع سريع لـ Flexbox و Grid." },
-  { title: "JavaScript Patterns", kind: "كتاب إلكتروني", color: "yellow", label: "JS", desc: "أنماط عملية لكتابة كود أفضل." },
+  { title: "دليل HTML الكامل", kind: "مرجع", color: "red", label: "HTML", desc: "كل ما تحتاجه لبناء صفحات منظمة.", url: "https://developer.mozilla.org/ar/docs/Web/HTML" },
+  { title: "CSS Layout Cheatsheet", kind: "ورقة غش", color: "blue", label: "CSS", desc: "مرجع سريع لـ Flexbox و Grid.", url: "https://css-tricks.com/snippets/css/a-guide-to-flexbox/" },
+  { title: "JavaScript Patterns", kind: "كتاب إلكتروني", color: "yellow", label: "JS", desc: "أنماط عملية لكتابة كود أفضل.", url: "https://javascript.info/" },
 ];
 const languages = [
   { name: "Python", desc: "ابدأ البرمجة والبيانات بسهولة", tone: "green", level: "مبتدئ", logo: "Py" },
@@ -48,6 +48,7 @@ let state = {
   dark: localStorage.getItem("cap-dark") === "true",
   activeCourse: localStorage.getItem("cap-course") || "web",
   completed: JSON.parse(localStorage.getItem("cap-completed") || "[0,1,2]"),
+  savedResources: JSON.parse(localStorage.getItem("cap-saved-resources") || "[]"),
   challengeFilter: "الكل",
   quizAnswer: "",
   quizSubmitted: false,
@@ -164,6 +165,24 @@ function homePage() {
       <button class="primary-btn light" data-nav="courses">ابدأ مجانًا ${icon("arrow")}</button>
     </section>
   </div>`;
+}
+
+function renderResourceCard(resource) {
+  const saved = state.savedResources.includes(resource.title);
+  return `
+    <article class="resource-card">
+      <span class="resource-cover ${resource.color}"><b>${resource.label}</b></span>
+      <span class="resource-info">
+        <span class="tag">${resource.kind}</span>
+        <h3>${resource.title}</h3>
+        <p>${resource.desc}</p>
+        <a href="${resource.url}" target="_blank" rel="noopener" class="resource-link">اقرأ المصدر ${icon("arrow")}</a>
+      </span>
+      <button class="save ${saved ? "is-saved" : ""}" data-save-resource="${resource.title}"
+        aria-label="${saved ? "إزالة من المفضلة" : "حفظ في المفضلة"}" aria-pressed="${saved}">
+        ${saved ? "♥" : "♡"}
+      </button>
+    </article>`;
 }
 
 function coursesPage() {
@@ -330,17 +349,7 @@ function challengesPage() {
 
 function resourcesPage() {
   const shown = resources.filter((r) => r.title.includes(state.searchQuery) || r.desc.includes(state.searchQuery));
-  const cards = shown.map((r) => `
-    <button class="resource-card" data-resource="${r.title}">
-      <span class="resource-cover ${r.color}"><b>${r.label}</b></span>
-      <span class="resource-info">
-        <span class="tag">${r.kind}</span>
-        <h3>${r.title}</h3>
-        <p>${r.desc}</p>
-        <small>اقرأ المصدر ${icon("arrow")}</small>
-      </span>
-      <span class="save">♡</span>
-    </button>`).join("");
+  const cards = shown.map(renderResourceCard).join("");
   const empty = shown.length === 0 ? `<div class="empty-state">لم نجد مصدرًا بهذا الاسم.</div>` : "";
 
   return `<div class="page inner-page">
@@ -351,10 +360,15 @@ function resourcesPage() {
     <div class="resource-layout">
       <div class="resource-list">${cards}${empty}</div>
       <aside class="favorites">
-        <div class="side-title"><b>المفضلة</b><span>3 مصادر</span></div>
-        <div class="favorite-item"><span class="fav-dot red"></span>JavaScript.info${icon("arrow")}</div>
-        <div class="favorite-item"><span class="fav-dot blue"></span>MDN Web Docs${icon("arrow")}</div>
-        <div class="favorite-item"><span class="fav-dot yellow"></span>CSS Tricks${icon("arrow")}</div>
+        <div class="side-title"><b>مصادري المحفوظة</b><span>${state.savedResources.length} مصدر</span></div>
+        ${state.savedResources.length
+          ? state.savedResources.map((title) => {
+            const resource = resources.find((item) => item.title === title);
+            return resource
+              ? `<a class="favorite-item" href="${resource.url}" target="_blank" rel="noopener"><span class="fav-dot ${resource.color}"></span>${resource.title}${icon("arrow")}</a>`
+              : "";
+          }).join("")
+          : `<p class="favorites-empty">احفظ المصادر التي تهمك لتظهر هنا.</p>`}
         <button class="text-btn" id="moreResources">اكتشف المزيد ${icon("arrow")}</button>
       </aside>
     </div>
@@ -426,13 +440,28 @@ function attachEvents() {
   document.querySelectorAll("[data-challenge]").forEach((btn) => {
     btn.addEventListener("click", () => {
       const unlocked = btn.dataset.unlocked === "true";
-      notify(unlocked ? `تم فتح تحدي ${btn.dataset.challenge}` : "أكمل التحديات السابقة لفتح هذا المستوى");
+      if (unlocked) {
+        state.page = "quiz";
+        state.quizAnswer = "";
+        state.quizSubmitted = false;
+        localStorage.setItem("cap-page", "quiz");
+        render();
+      } else {
+        notify("أكمل الدروس والتحديات المتاحة أولًا لفتح هذا المستوى.");
+      }
     });
   });
 
-  // resource cards
-  document.querySelectorAll("[data-resource]").forEach((btn) => {
-    btn.addEventListener("click", () => notify(`فتح ${btn.dataset.resource}`));
+  // Save resources to the user's favorites.
+  document.querySelectorAll("[data-save-resource]").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      const title = btn.dataset.saveResource;
+      state.savedResources = state.savedResources.includes(title)
+        ? state.savedResources.filter((savedTitle) => savedTitle !== title)
+        : [...state.savedResources, title];
+      localStorage.setItem("cap-saved-resources", JSON.stringify(state.savedResources));
+      render();
+    });
   });
 
   // search input
@@ -443,29 +472,34 @@ function attachEvents() {
       const shown = resources.filter((r) => r.title.includes(state.searchQuery) || r.desc.includes(state.searchQuery));
       const list = document.querySelector(".resource-list");
       if (list) {
-        list.innerHTML = shown.map((r) => `
-          <button class="resource-card" data-resource="${r.title}">
-            <span class="resource-cover ${r.color}"><b>${r.label}</b></span>
-            <span class="resource-info">
-              <span class="tag">${r.kind}</span>
-              <h3>${r.title}</h3>
-              <p>${r.desc}</p>
-              <small>اقرأ المصدر ${icon("arrow")}</small>
-            </span>
-            <span class="save">♡</span>
-          </button>`).join("") || `<div class="empty-state">لم نجد مصدرًا بهذا الاسم.</div>`;
-        list.querySelectorAll("[data-resource]").forEach((b) => b.addEventListener("click", () => notify(`فتح ${b.dataset.resource}`)));
+        list.innerHTML = shown.map(renderResourceCard).join("") || `<div class="empty-state">لم نجد مصدرًا بهذا الاسم.</div>`;
+        list.querySelectorAll("[data-save-resource]").forEach((btn) => {
+          btn.addEventListener("click", () => {
+            const title = btn.dataset.saveResource;
+            state.savedResources = state.savedResources.includes(title)
+              ? state.savedResources.filter((savedTitle) => savedTitle !== title)
+              : [...state.savedResources, title];
+            localStorage.setItem("cap-saved-resources", JSON.stringify(state.savedResources));
+            render();
+          });
+        });
       }
     });
   }
 
-  // more resources
+  // Open a curated collection of additional learning resources.
   const more = $("#moreResources");
-  if (more) more.addEventListener("click", () => notify("جاري تحميل قائمة المصادر"));
+  if (more) more.addEventListener("click", () => window.open("https://www.freecodecamp.org/learn/", "_blank", "noopener"));
 
-  // challenge start
+  // Start the weekly challenge in the interactive editor.
   const startCh = $("#startChallenge");
-  if (startCh) startCh.addEventListener("click", () => notify("بدأ التحدي بنجاح"));
+  if (startCh) startCh.addEventListener("click", () => {
+    go("compiler");
+    setTimeout(() => {
+      const input = $("#codeInput");
+      if (input) input.value = `// تحدي الأسبوع: ابنِ آلة حاسبة بسيطة\nfunction add(a, b) {\n  return a + b;\n}\n\nconsole.log(add(12, 8));`;
+    }, 0);
+  });
 
   // quiz options
   document.querySelectorAll("[data-quiz]").forEach((btn) => {
@@ -495,10 +529,11 @@ function attachEvents() {
       const fn = new Function("console", code);
       fn(fakeConsole);
       output.textContent = logs.length ? logs.join("\n") : "تم التشغيل بنجاح (لا يوجد إخراج)";
+      notify("تم تشغيل الكود بنجاح");
     } catch (err) {
       output.textContent = "خطأ: " + err.message;
+      notify("حدث خطأ أثناء تشغيل الكود");
     }
-    notify("تم تشغيل الكود بنجاح");
   });
 }
 
@@ -506,7 +541,14 @@ function attachEvents() {
 document.addEventListener("DOMContentLoaded", () => {
   applyTheme();
   $("#themeToggle").addEventListener("click", toggleDark);
-  $("#bellBtn").addEventListener("click", () => notify("لا توجد إشعارات جديدة"));
+  const bell = $("#bellBtn");
+  const notificationDot = bell.querySelector("i");
+  if (localStorage.getItem("cap-notifications-read") === "true") notificationDot.hidden = true;
+  bell.addEventListener("click", () => {
+    notificationDot.hidden = true;
+    localStorage.setItem("cap-notifications-read", "true");
+    notify("أنت على اطلاع بكل جديد. لا توجد إشعارات غير مقروءة.");
+  });
   $("#avatarBtn").addEventListener("click", () => notify("مرحبًا يا أحمد"));
   render();
 });
