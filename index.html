@@ -5,9 +5,39 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="theme-color" content="#f7f9fc" />
     <title>CodeAcademy Pro | تعلّم بذكاء</title>
+    <link rel="stylesheet" href="css/styles.css" />
     <meta property="og:image" content="https://bolt.new/static/og_default.png">
     <meta name="twitter:card" content="summary_large_image">
     <meta name="twitter:image" content="https://bolt.new/static/og_default.png">
 </head>
-  <body><div id="root"></div><script type="module" src="/src/main.jsx"></script></body>
+  <body>
+    <div class="app-shell">
+      <header class="topbar">
+        <button class="brand" data-nav="home" aria-label="الصفحة الرئيسية">
+          <span class="brand-mark">{ }</span>
+          <span>CodeAcademy <b>Pro</b></span>
+        </button>
+        <nav class="main-nav">
+          <button data-nav="home">الرئيسية</button>
+          <button data-nav="courses">المسارات</button>
+          <button data-nav="languages">اللغات</button>
+          <button data-nav="challenges">التحديات</button>
+          <button data-nav="resources">المصادر</button>
+        </nav>
+        <div class="top-actions">
+          <button class="icon-button" id="themeToggle" aria-label="تبديل الوضع"></button>
+          <button class="icon-button notification" id="bellBtn" aria-label="الإشعارات"><i></i></button>
+          <button class="avatar" id="avatarBtn">أح</button>
+        </div>
+      </header>
+      <main id="app"></main>
+      <footer>
+        <span>© 2025 CodeAcademy Pro</span>
+        <span>تعلّم. طبّق. أنجز.</span>
+        <span>صُنع بشغف للمبرمجين العرب</span>
+      </footer>
+    </div>
+    <div id="toast" class="toast hidden"></div>
+    <script src="js/app.js"></script>
+  </body>
 </html>
